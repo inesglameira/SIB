@@ -176,3 +176,40 @@ class RandomForestClassifier:
 
     def score(self, dataset: Dataset) -> float:
         return self._score(dataset)
+    
+    def _predict(self, dataset: Dataset) -> np.ndarray:
+        """
+        Prediz labels para dataset.X usando voto majoritário das árvores treinadas.
+        """
+        if len(self.trees) == 0:
+            raise ValueError("_predict: modelo não treinado. Chame _fit() primeiro.")
+
+        X = np.asarray(dataset.X, dtype=float)
+        n_samples = X.shape[0]
+
+        # Matriz onde cada linha são as previsões de uma árvore
+        all_preds = np.empty((self.n_estimators, n_samples), dtype=object)
+
+        for i, (feat_idx, tree) in enumerate(self.trees):
+            X_sub = X[:, feat_idx]
+
+            # tentar prever diretamente com X_sub
+            try:
+                preds = tree.predict(X_sub)
+            except Exception:
+                # API alternativa: árvore requer Dataset
+                from si.data.dataset import Dataset as _DS
+                tmp_ds = _DS(X=X_sub, y=None, features=None, label=None)
+                preds = tree.predict(tmp_ds)
+
+            all_preds[i, :] = preds
+
+        # Voto maioritário
+        final_preds = np.empty(n_samples, dtype=object)
+        for j in range(n_samples):
+            col = all_preds[:, j]
+            uniq, counts = np.unique(col, return_counts=True)
+            winner = uniq[np.argmax(counts)]
+            final_preds[j] = winner
+
+        return np.asarray(final_preds, dtype=final_preds.dtype)
