@@ -166,6 +166,113 @@ class Dataset:
             df = pd.DataFrame(self.X, columns=self.features)
             df[self.label] = self.y
             return df
+        
+    def dropna(self) -> "Dataset":    
+        """
+        Remove todas as amostras (linhas) que contenham pelo menos um valor nulo (NaN)
+        na matriz X. As linhas correspondentes no vetor y (caso exista) também são removidas,
+        garantindo que X e y permanecem alinhados.
+
+        Este método utiliza exclusivamente funções do NumPy.
+
+        Returns:
+            Dataset: O próprio objeto Dataset (self), modificado, sem valores NaN em X.
+        """
+        X = np.asarray(self.X)
+
+        # Se X tiver 0 colunas (ex.: shape (n,0)), não há nada para remover
+        if X.ndim == 2 and X.shape[1] == 0:
+            return self
+
+        # Máscara das linhas que NÃO têm NaN
+        mask = ~np.isnan(X).any(axis=1)
+
+        # Aplicar máscara
+        self.X = X[mask]
+        if self.y is not None:
+            self.y = np.asarray(self.y)[mask]
+
+        return self
+    
+    def fillna(self, value: Union[float, str]) -> "Dataset":
+        """
+        Substitui todos os valores NaN da matriz X por:
+            • um valor numérico fornecido (float),
+            • a média da feature (value == "mean"),
+            • a mediana da feature (value == "median").
+
+        Apenas funções NumPy são utilizadas.
+
+        Args:
+            value (float | str):
+                Valor de substituição ou as strings "mean" ou "median".
+
+        Returns:
+            Dataset: O próprio objeto Dataset (self) com todos os NaN substituídos.
+
+        Raises:
+            ValueError: Se value for uma string diferente de "mean" ou "median".
+        """
+        X = np.asarray(self.X).astype(float, copy=True)
+
+        if X.ndim == 2 and X.shape[1] == 0:
+            return self
+
+        if isinstance(value, str):
+            if value == "mean":
+                fill_vals = np.nanmean(X, axis=0)
+            elif value == "median":
+                fill_vals = np.nanmedian(X, axis=0)
+            else:
+                raise ValueError("fillna: o valor string deve ser 'mean' ou 'median'")
+        else:
+            fill_vals = np.full(X.shape[1], float(value))
+
+        # Máscara dos NaNs
+        nan_mask = np.isnan(X)
+
+        # Substituição
+        if nan_mask.any():
+            col_indices = np.where(nan_mask)[1]
+            X[nan_mask] = np.take(fill_vals, col_indices)
+
+        self.X = X
+        return self
+    
+    def remove_by_index(self, index: int) -> "Dataset":
+        """
+        Remove uma amostra (linha) da matriz X, de acordo com o índice fornecido.
+        A linha correspondente no vetor y (caso exista) também é removida.
+
+        Índices negativos são tratados como no NumPy (ex.: -1 remove a última linha).
+
+        Apenas funções NumPy são utilizadas.
+
+        Args:
+            index (int): Índice da amostra a remover.
+
+        Returns:
+            Dataset: O próprio objeto Dataset (self), modificado.
+
+        Raises:
+            IndexError: Se o índice estiver fora dos limites.
+        """
+        X = np.asarray(self.X)
+        n = X.shape[0]
+
+        # Permite índices negativos
+        if index < 0:
+            index = n + index
+
+        if not (0 <= index < n):
+            raise IndexError(f"remove_by_index: índice {index} fora dos limites (0..{n-1})")
+
+        self.X = np.delete(X, index, axis=0)
+
+        if self.y is not None:
+            self.y = np.delete(np.asarray(self.y), index, axis=0)
+
+        return self
 
     @classmethod
     def from_random(cls,
