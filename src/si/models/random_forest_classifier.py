@@ -116,100 +116,55 @@ class RandomForestClassifier:
 
     def _predict(self, dataset: Dataset) -> np.ndarray:
         """
-        Prediz labels para dataset.X usando voto majoritário das árvores.
-        Retorna um array shape (n_samples,) com as labels preditas.
-        """
-        X = np.asarray(dataset.X, dtype=float)
-        n_samples = X.shape[0]
-
-        if len(self.trees) == 0:
-            raise ValueError("_predict: modelo não treinado. Chame _fit().")
-
-        # recolher preds de cada árvore: shape (n_estimators, n_samples)
-        all_preds = np.empty((self.n_estimators, n_samples), dtype=object)
-
-        for i, (feat_idx, tree) in enumerate(self.trees):
-            # selecionar colunas usadas na árvore
-            X_sub = X[:, feat_idx]
-            preds = tree.predict(X_sub)  # assume retorno shape (n_samples,)
-            all_preds[i, :] = preds
-
-        # para cada sample, escolher a classe mais frequente (majority vote)
-        # converter all_preds para int se necessário
-        # vamos operar coluna a coluna
-        final_preds = np.empty(n_samples, dtype=all_preds.dtype)
-
-        for j in range(n_samples):
-            col = all_preds[:, j]
-            # bincount necessita de ints não negativos; labels podem não ser 0..K-1
-            # por segurança, usamos unique com counts
-            uniq, counts = np.unique(col, return_counts=True)
-            winner = uniq[np.argmax(counts)]
-            final_preds[j] = winner
-
-        return np.asarray(final_preds, dtype=final_preds.dtype)
-
-    def _score(self, dataset: Dataset) -> float:
-        """
-        Calcula a accuracy do modelo no dataset fornecido.
-        """
-        if dataset.y is None:
-            raise ValueError("_score: dataset deve conter y")
-        y_pred = self._predict(dataset)
-        return accuracy(dataset.y, y_pred)
-
-    # Syntactic sugar: fit/predict/score que chamam os métodos internos
-    def fit(self, dataset: Dataset) -> "RandomForestClassifier":
-        return self._fit(dataset)
-
-    def predict(self, dataset_or_X) -> np.ndarray:
-        """
-        Conveniência: aceita Dataset ou array X.
-        """
-        if isinstance(dataset_or_X, Dataset):
-            data = dataset_or_X
-        else:
-            # assumir matrix X fornecida - criar dataset temporário (sem y)
-            X = np.asarray(dataset_or_X, dtype=float)
-            data = Dataset(X=X, y=None, features=None, label=None)
-        return self._predict(data)
-
-    def score(self, dataset: Dataset) -> float:
-        return self._score(dataset)
-    
-    def _predict(self, dataset: Dataset) -> np.ndarray:
-        """
-        Prediz labels para dataset.X usando voto majoritário das árvores treinadas.
+        Prediz labels para dataset.X usando voto maioritário das árvores treinadas.
         """
         if len(self.trees) == 0:
             raise ValueError("_predict: modelo não treinado. Chame _fit() primeiro.")
 
         X = np.asarray(dataset.X, dtype=float)
+        if X.ndim != 2:
+            raise ValueError("_predict: X deve ser matriz 2D (n_samples, n_features).")
         n_samples = X.shape[0]
 
-        # Matriz onde cada linha são as previsões de uma árvore
-        all_preds = np.empty((self.n_estimators, n_samples), dtype=object)
+        # número real de árvores treinadas
+        n_trees = len(self.trees)
+
+        # Matriz onde cada linha são as previsões das árvores
+        all_preds = np.empty((n_trees, n_samples), dtype=object)
 
         for i, (feat_idx, tree) in enumerate(self.trees):
             X_sub = X[:, feat_idx]
 
-            # tentar prever diretamente com X_sub
+            # tentar prever diretamente
             try:
                 preds = tree.predict(X_sub)
             except Exception:
-                # API alternativa: árvore requer Dataset
                 from si.data.dataset import Dataset as _DS
                 tmp_ds = _DS(X=X_sub, y=None, features=None, label=None)
                 preds = tree.predict(tmp_ds)
+
+            # garantir formato correto
+            preds = np.asarray(preds, dtype=object)
+            if preds.ndim != 1 or preds.shape[0] != n_samples:
+                raise ValueError(
+                    f"_predict: árvore {i} retornou shape inválido {preds.shape}"
+                )
 
             all_preds[i, :] = preds
 
         # Voto maioritário
         final_preds = np.empty(n_samples, dtype=object)
+
         for j in range(n_samples):
             col = all_preds[:, j]
-            uniq, counts = np.unique(col, return_counts=True)
-            winner = uniq[np.argmax(counts)]
-            final_preds[j] = winner
+
+            # remover None, se existirem
+            col_valid = [v for v in col if v is not None]
+            if len(col_valid) == 0:
+                raise ValueError(f"_predict: nenhuma previsão válida para amostra {j}")
+
+            uniq, counts = np.unique(col_valid, return_counts=True)
+            final_preds[j] = uniq[np.argmax(counts)]
 
         return np.asarray(final_preds, dtype=final_preds.dtype)
+
