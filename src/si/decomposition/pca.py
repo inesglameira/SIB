@@ -3,7 +3,6 @@ from typing import Optional, Sequence
 import numpy as np
 
 from si.data.dataset import Dataset
-# Ajusta este import se o teu Transformer estiver noutro módulo
 from si.base.transformer import Transformer
 
 
@@ -137,7 +136,6 @@ class PCA(Transformer):
 
         return Dataset(X=X_reduced, y=dataset.y, features=features_new, label=dataset.label)
 
-    # Wrappers públicos (caso a base Transformer não tenha)
     def fit(self, dataset: Dataset) -> "PCA":
         """Wrapper para _fit."""
         return self._fit(dataset)

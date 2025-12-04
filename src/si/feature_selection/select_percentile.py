@@ -10,8 +10,7 @@ import numpy as np
 
 from si.data.dataset import Dataset
 from si.statistics.f_classification import f_classification
-from si.base.transformer import Transformer  # corresponde ao teu src/si/base/transformer.py
-
+from si.base.transformer import Transformer  
 
 ScoreFuncType = Callable[[Dataset], Tuple[np.ndarray, np.ndarray]]
 
