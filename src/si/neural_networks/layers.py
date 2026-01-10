@@ -4,6 +4,7 @@ import copy
 import numpy as np
 
 from si.neural_networks.optimizers import Optimizer
+from si.neural_networks.layers import Layer
 
 
 class Layer(metaclass=ABCMeta):
@@ -141,3 +142,64 @@ class DenseLayer(Layer):
             The shape of the output of the layer.
         """
         return (self.n_units,) 
+
+class Dropout(Layer):
+    """
+    Camada Dropout.
+
+    Durante o treino, desliga aleatoriamente uma fração dos neurónios de entrada
+    com probabilidade p, ajudando a reduzir overfitting.
+    Durante o teste, a camada não altera os dados.
+
+    Parâmetros
+    ----------
+    p : float
+        Probabilidade de desligar cada neurónio (0 < p < 1).
+    """
+
+    def __init__(self, p: float = 0.5):
+        if not (0 < p < 1):
+            raise ValueError("Dropout: p deve estar no intervalo (0, 1).")
+
+        self.p = p
+        self.mask = None
+
+    def forward_propagation(self, input_data: np.ndarray, training: bool = True) -> np.ndarray:
+        """
+        Forward pass da camada Dropout.
+
+        Durante o treino:
+        - gera uma máscara aleatória
+        - desliga neurónios com probabilidade p
+        - aplica inverted dropout (escala por 1 / (1 - p))
+
+        Durante o teste:
+        - devolve o input sem alterações
+        """
+        if training:
+            # máscara booleana: True = neurónio ativo
+            self.mask = np.random.rand(*input_data.shape) > self.p
+            return (input_data * self.mask) / (1.0 - self.p)
+        else:
+            return input_data
+
+    def backward_propagation(self, output_error: np.ndarray) -> np.ndarray:
+        """
+        Backward pass da camada Dropout.
+
+        O erro só é propagado pelos neurónios que estavam ativos no forward.
+        """
+        return (output_error * self.mask) / (1.0 - self.p)
+
+    def output_shape(self) -> tuple:
+        """
+        A forma de saída é igual à forma de entrada.
+        """
+        return None
+
+    def parameters(self) -> dict:
+        """
+        Dropout não possui parâmetros treináveis.
+        """
+        return {}
+    
