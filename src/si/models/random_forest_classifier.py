@@ -198,7 +198,7 @@ class RandomForestClassifier(Model):
             try:
                 preds = tree.predict(X_sub)
             except Exception:
-                # fallback se a árvore exigir Dataset
+                # fallback se a árvore exigir Dataset; retorna um numpy array mas o input é sempre um dataset 
                 tmp_ds = Dataset(X_sub, y=None, features=None, label=None)
                 preds = tree.predict(tmp_ds)
 
