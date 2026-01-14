@@ -4,7 +4,6 @@ import copy
 import numpy as np
 
 from si.neural_networks.optimizers import Optimizer
-from si.neural_networks.layers import Layer
 
 
 class Layer(metaclass=ABCMeta):

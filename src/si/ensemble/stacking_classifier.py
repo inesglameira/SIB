@@ -95,12 +95,13 @@ class StackingClassifier(Model):
     # ------------------------------------------------------------------
     # SCORE
     # ------------------------------------------------------------------
-    def _score(self, dataset: Dataset) -> float:
+    def _score(self, dataset: Dataset, predictions: np.ndarray) -> float:
         """
         Calcula a accuracy do StackingClassifier.
         """
         if dataset.y is None:
             raise ValueError("_score: dataset deve conter y.")
 
-        preds = self._predict(dataset)
-        return accuracy(dataset.y, preds)
+        return accuracy(dataset.y, predictions)
+
+
