@@ -177,3 +177,49 @@ class ReLUActivation(ActivationLayer):
             The derivative of the activation function.
         """
         return np.where(input >= 0, 1, 0)
+
+class TanhActivation(ActivationLayer):
+    """
+    Camada de ativação Tanh.
+
+    Aplica a função tangente hiperbólica aos valores de entrada,
+    comprimindo-os para o intervalo [-1, 1].
+    """
+
+    def activation_function(self, input: np.ndarray) -> np.ndarray:
+        """
+        Aplica a função tanh ao input.
+        """
+        return np.tanh(input)
+
+    def derivative(self, input: np.ndarray) -> np.ndarray:
+        """
+        Calcula a derivada da tanh:
+            1 - tanh(x)^2
+        """
+        return 1.0 - np.tanh(input) ** 2
+
+class SoftmaxActivation(ActivationLayer):
+    """
+    Camada de ativação Softmax.
+
+    Converte scores em probabilidades que somam 1,
+    sendo adequada para classificação multi-classe.
+    """
+
+    def activation_function(self, input: np.ndarray) -> np.ndarray:
+        """
+        Aplica a função softmax de forma numericamente estável.
+        """
+        # subtrair o máximo por linha para estabilidade numérica
+        shifted = input - np.max(input, axis=1, keepdims=True)
+        exp_vals = np.exp(shifted)
+        return exp_vals / np.sum(exp_vals, axis=1, keepdims=True)
+
+    def derivative(self, input: np.ndarray) -> np.ndarray:
+        """
+        Derivada simplificada da softmax:
+            f(x) * (1 - f(x))
+        """
+        softmax_out = self.activation_function(input)
+        return softmax_out * (1.0 - softmax_out)
